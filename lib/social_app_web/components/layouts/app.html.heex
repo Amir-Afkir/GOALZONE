@@ -1,0 +1,49 @@
+<header :if={!assigns[:hide_app_header]} class="app-topbar">
+  <div class="app-shell app-topbar-inner">
+    <div class="app-brand-row">
+      <div class="app-topbar-block">
+        <a class="app-logo" href={~p"/"}>GoalZone</a>
+        <p :if={assigns[:page_context]} class="app-current">
+          Tu es ici: {assigns[:page_context]}
+        </p>
+      </div>
+
+      <div :if={@current_user} class="app-account">
+        <span class="app-user-mail">{@current_user.email}</span>
+        <.link href={~p"/users/settings"} class="ghost-link">Settings</.link>
+        <.link href={~p"/users/log_out"} method="delete" class="ghost-link">Log out</.link>
+      </div>
+      <div :if={!@current_user} class="app-account">
+        <span class="ghost-link app-auth-pill">Register</span>
+      </div>
+    </div>
+    <nav :if={@current_user && !assigns[:use_sidebar_nav]} class="app-links">
+      <a href={~p"/"}>Terrain</a>
+      <a href={~p"/talents"}>Talents</a>
+      <a href={~p"/reseau"}>Reseau</a>
+      <a href={~p"/messages"}>Messages</a>
+      <a href={~p"/alertes"}>Alertes</a>
+      <a href={~p"/profile/#{@current_user.username}"}>Profil</a>
+    </nav>
+  </div>
+</header>
+
+<main class={[
+  "app-shell",
+  "app-main",
+  assigns[:use_wide_layout] && "app-shell-wide",
+  assigns[:hide_app_header] && "app-main-no-header"
+]}>
+  <.flash_group flash={@flash} />
+  {@inner_content}
+</main>
+
+<.mini_coach
+  :if={assigns[:mini_coach]}
+  page={assigns[:mini_coach].page}
+  where={assigns[:mini_coach].where}
+  goal={assigns[:mini_coach].goal}
+  next={assigns[:mini_coach].next}
+  cta_to={assigns[:mini_coach].cta_to}
+  cta_label={assigns[:mini_coach].cta_label}
+/>

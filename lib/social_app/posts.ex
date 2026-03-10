@@ -47,7 +47,7 @@ defmodule SocialApp.Posts do
 
   def like_post(user_id, post_id) do
     Repo.transaction(fn ->
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
 
       {inserted_rows, _} =
         Repo.insert_all(

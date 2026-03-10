@@ -98,7 +98,7 @@ defmodule SocialApp.Messaging do
                 thread
                 |> Thread.changeset(%{
                   last_message_text: String.slice(body, 0, 180),
-                  last_message_at: DateTime.utc_now() |> DateTime.truncate(:second)
+                  last_message_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
                 })
                 |> Repo.update()
 

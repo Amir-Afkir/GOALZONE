@@ -6,34 +6,42 @@ defmodule SocialAppWeb.PostLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     user_id = socket.assigns.current_user.id
-    post_id = String.to_integer(id)
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(SocialApp.PubSub, "post:#{post_id}")
-      Phoenix.PubSub.subscribe(SocialApp.PubSub, "user:#{user_id}")
+    with {:ok, post_id} <- parse_post_id(id),
+         {:ok, post} <- fetch_post(post_id) do
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(SocialApp.PubSub, "post:#{post_id}")
+        Phoenix.PubSub.subscribe(SocialApp.PubSub, "user:#{user_id}")
 
-      SocialAppWeb.Presence.track(self(), "user:#{user_id}", user_id, %{
-        online_at: DateTime.utc_now()
-      })
+        SocialAppWeb.Presence.track(self(), "user:#{user_id}", user_id, %{
+          online_at: DateTime.utc_now()
+        })
+      end
+
+      {:ok,
+       assign(socket,
+         page_context: "Debrief post",
+         mini_coach: %{
+           page: "post-#{post_id}",
+           where: "Debrief d'une action",
+           goal: "Analyser l'action puis contribuer utilement",
+           next: "Commente ou avance l'etape pipeline.",
+           cta_to: ~p"/",
+           cta_label: "Retour terrain"
+         },
+         current_user_id: user_id,
+         post: post,
+         comments: Posts.list_comments(post_id, 100),
+         comment_form: to_form(%{"content" => ""}, as: :comment),
+         shortlist_entry: Recruitment.get_entry(user_id, post_id)
+       )}
+    else
+      _ ->
+        {:ok,
+         socket
+         |> put_flash(:error, "Post introuvable")
+         |> push_navigate(to: ~p"/")}
     end
-
-    {:ok,
-     assign(socket,
-       page_context: "Debrief post",
-       mini_coach: %{
-         page: "post-#{post_id}",
-         where: "Debrief d'une action",
-         goal: "Analyser l'action puis contribuer utilement",
-         next: "Commente ou avance l'etape pipeline.",
-         cta_to: ~p"/",
-         cta_label: "Retour terrain"
-       },
-       current_user_id: user_id,
-       post: Posts.get_post!(post_id),
-       comments: Posts.list_comments(post_id, 100),
-       comment_form: to_form(%{"content" => ""}, as: :comment),
-       shortlist_entry: Recruitment.get_entry(user_id, post_id)
-     )}
   end
 
   @impl true
@@ -184,4 +192,22 @@ defmodule SocialAppWeb.PostLive.Show do
   defp source_type_label(:live_observation), do: "Observation live"
   defp source_type_label(:stat_report), do: "Rapport stats"
   defp source_type_label(_), do: "Non precise"
+
+  defp parse_post_id(nil), do: {:error, :invalid_id}
+  defp parse_post_id(""), do: {:error, :invalid_id}
+
+  defp parse_post_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _ -> {:error, :invalid_id}
+    end
+  end
+
+  defp parse_post_id(_), do: {:error, :invalid_id}
+
+  defp fetch_post(post_id) do
+    {:ok, Posts.get_post!(post_id)}
+  rescue
+    Ecto.NoResultsError -> {:error, :not_found}
+  end
 end

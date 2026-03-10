@@ -29,10 +29,11 @@
 </header>
 
 <main class={[
-  "app-shell",
   "app-main",
-  assigns[:use_wide_layout] && "app-shell-wide",
-  assigns[:hide_app_header] && "app-main-no-header"
+  !assigns[:hide_app_header] && "app-shell",
+  assigns[:use_wide_layout] && !assigns[:hide_app_header] && "app-shell-wide",
+  assigns[:hide_app_header] && "app-main-no-header",
+  assigns[:hide_app_header] && "app-main-feed"
 ]}>
   <.flash_group flash={@flash} />
   {@inner_content}

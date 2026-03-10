@@ -22,16 +22,20 @@ defmodule SocialAppWeb.NetworkLive do
 
   @impl true
   def handle_event("toggle_follow", %{"user_id" => user_id}, socket) do
-    user_id = String.to_integer(user_id)
-    current_user_id = socket.assigns.current_user_id
+    with {:ok, parsed_user_id} <- parse_user_id(user_id) do
+      current_user_id = socket.assigns.current_user_id
 
-    if user_id in socket.assigns.followed_ids do
-      _ = Accounts.unfollow_user(current_user_id, user_id)
+      if parsed_user_id in socket.assigns.followed_ids do
+        _ = Accounts.unfollow_user(current_user_id, parsed_user_id)
+      else
+        _ = Accounts.follow_user(current_user_id, parsed_user_id)
+      end
+
+      {:noreply, load_network(socket)}
     else
-      _ = Accounts.follow_user(current_user_id, user_id)
+      {:error, :invalid_id} ->
+        {:noreply, put_flash(socket, :error, "Action invalide")}
     end
-
-    {:noreply, load_network(socket)}
   end
 
   @impl true
@@ -111,4 +115,16 @@ defmodule SocialAppWeb.NetworkLive do
   defp fallback_headline(nil), do: "Profil en cours de qualification"
   defp fallback_headline(""), do: "Profil en cours de qualification"
   defp fallback_headline(value), do: value
+
+  defp parse_user_id(nil), do: {:error, :invalid_id}
+  defp parse_user_id(""), do: {:error, :invalid_id}
+
+  defp parse_user_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _ -> {:error, :invalid_id}
+    end
+  end
+
+  defp parse_user_id(_), do: {:error, :invalid_id}
 end

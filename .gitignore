@@ -5,8 +5,10 @@
 /.elixir_ls/
 /erl_crash.dump
 /tmp/
+/test-results/
 /.env
 *.ez
+.DS_Store
 
 # Assets
 /priv/static/assets/

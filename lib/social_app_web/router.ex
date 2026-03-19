@@ -45,7 +45,7 @@ defmodule SocialAppWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{SocialAppWeb.UserAuth, :ensure_authenticated}] do
       live "/", FeedLive, :index
-      live "/talents", TalentsLive, :index
+      live "/mercato", MercatoLive, :index
       live "/reseau", NetworkLive, :index
       live "/messages", MessagesLive, :index
       live "/alertes", NotificationsLive, :index

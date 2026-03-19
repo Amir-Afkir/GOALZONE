@@ -19,8 +19,9 @@ defmodule SocialAppWeb.PostLive.Show do
       end
 
       {:ok,
-       assign(socket,
-         page_context: "Debrief post",
+       socket
+       |> SocialAppWeb.PageShellComponents.assign_shell(:terrain, "Debrief post")
+       |> assign(
          mini_coach: %{
            page: "post-#{post_id}",
            where: "Debrief d'une action",
@@ -108,69 +109,71 @@ defmodule SocialAppWeb.PostLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="stack-lg">
-      <header class="panel matchday-hero">
-        <p class="kicker">Zone tactique</p>
-        <h1 class="section-title">Debrief du post</h1>
-      </header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <header class="panel feed-panel matchday-hero">
+          <p class="kicker">Zone tactique</p>
+          <h1 class="section-title">Debrief du post</h1>
+        </header>
 
-      <article class="panel">
-        <div class="meta-line">@{(@post.user && @post.user.username) || "inconnu"}</div>
-        <div class="status-row">
-          <span class="status-pill status-pill-muted">{post_format_label(@post.post_format)}</span>
-          <span class="status-pill status-pill-muted">{intention_label(@post.intention)}</span>
-          <span
-            :if={@post.source_type && @post.source_type != :unknown}
-            class="status-pill status-pill-muted"
-          >
-            Source: {source_type_label(@post.source_type)}
-          </span>
-          <a
-            :if={@post.media_url}
-            href={@post.media_url}
-            class="text-link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Ouvrir media
-          </a>
-        </div>
-        <p class="post-content">{@post.content}</p>
-        <p :if={structured_post?(@post)} class="meta-line">
-          {@post.competition || "Match"} {if @post.opponent, do: "· vs #{@post.opponent}", else: ""}
-          {if @post.match_minute, do: "· #{@post.match_minute}'", else: ""}
-        </p>
-        <.button class="btn-like" phx-click="like">Supporters: {@post.likes_count}</.button>
-        <div class="post-actions">
-          <button class="ghost-link" phx-click="toggle_shortlist">
-            {if @shortlist_entry, do: "Retirer pipeline", else: "Ajouter pipeline"}
-          </button>
-          <button :if={@shortlist_entry} class="ghost-link" phx-click="advance_stage">
-            Etape: {Labels.stage_label(@shortlist_entry.stage)}
-          </button>
-        </div>
-      </article>
-
-      <form phx-submit="add_comment" class="panel stack-md">
-        <label for="comment_content" class="field-label">Ton analyse</label>
-        <textarea
-          id="comment_content"
-          name={@comment_form[:content].name}
-          rows="3"
-          class="comment-textarea"
-          placeholder="Ecris ton debrief de cette action..."
-        ><%= @comment_form[:content].value %></textarea>
-        <.button type="submit">Publier l'analyse</.button>
-      </form>
-
-      <section class="stack-md">
-        <h2 class="section-title">Commentaires du vestiaire</h2>
-        <article :for={comment <- @comments} class="panel">
-          <div class="meta-line">@{(comment.user && comment.user.username) || "inconnu"}</div>
-          <p class="post-content">{comment.content}</p>
+        <article class="panel feed-panel">
+          <div class="meta-line">@{(@post.user && @post.user.username) || "inconnu"}</div>
+          <div class="status-row">
+            <span class="status-pill status-pill-muted">{post_format_label(@post.post_format)}</span>
+            <span class="status-pill status-pill-muted">{intention_label(@post.intention)}</span>
+            <span
+              :if={@post.source_type && @post.source_type != :unknown}
+              class="status-pill status-pill-muted"
+            >
+              Source: {source_type_label(@post.source_type)}
+            </span>
+            <a
+              :if={@post.media_url}
+              href={@post.media_url}
+              class="text-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ouvrir media
+            </a>
+          </div>
+          <p class="post-content">{@post.content}</p>
+          <p :if={structured_post?(@post)} class="meta-line">
+            {@post.competition || "Match"} {if @post.opponent, do: "· vs #{@post.opponent}", else: ""}
+            {if @post.match_minute, do: "· #{@post.match_minute}'", else: ""}
+          </p>
+          <.button class="btn-like" phx-click="like">Supporters: {@post.likes_count}</.button>
+          <div class="post-actions">
+            <button class="ghost-link" phx-click="toggle_shortlist">
+              {if @shortlist_entry, do: "Retirer pipeline", else: "Ajouter pipeline"}
+            </button>
+            <button :if={@shortlist_entry} class="ghost-link" phx-click="advance_stage">
+              Etape: {Labels.stage_label(@shortlist_entry.stage)}
+            </button>
+          </div>
         </article>
+
+        <form phx-submit="add_comment" class="panel feed-panel stack-md">
+          <label for="comment_content" class="field-label">Ton analyse</label>
+          <textarea
+            id="comment_content"
+            name={@comment_form[:content].name}
+            rows="3"
+            class="comment-textarea"
+            placeholder="Ecris ton debrief de cette action..."
+          ><%= @comment_form[:content].value %></textarea>
+          <.button type="submit">Publier l'analyse</.button>
+        </form>
+
+        <section class="stack-md">
+          <h2 class="section-title">Commentaires du vestiaire</h2>
+          <article :for={comment <- @comments} class="panel feed-panel">
+            <div class="meta-line">@{(comment.user && comment.user.username) || "inconnu"}</div>
+            <p class="post-content">{comment.content}</p>
+          </article>
+        </section>
       </section>
-    </section>
+    </.goalzone_shell>
     """
   end
 

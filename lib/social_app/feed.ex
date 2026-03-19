@@ -21,15 +21,15 @@ defmodule SocialApp.Feed do
 
   def home_feed_for_user(user_id, opts) do
     limit = Keyword.get(opts, :limit, 20)
+    tab = Keyword.get(opts, :tab, "for_you")
+    sort = Keyword.get(opts, :sort, "relevance")
 
-    from(p in Post,
-      left_join: f in Follow,
-      on: f.followed_id == p.user_id and f.follower_id == ^user_id,
-      where: p.user_id == ^user_id or not is_nil(f.follower_id),
-      order_by: [desc: p.inserted_at],
-      preload: [:user],
-      limit: ^limit
-    )
+    user_id
+    |> base_feed_query()
+    |> filter_feed_tab(tab)
+    |> sort_feed(sort)
+    |> limit(^limit)
+    |> preload([p], [:user])
     |> Repo.all()
   end
 
@@ -70,4 +70,44 @@ defmodule SocialApp.Feed do
   defp online_user?(user_id) do
     SocialAppWeb.Presence.list("user:#{user_id}") != %{}
   end
+
+  defp base_feed_query(user_id) do
+    from(p in Post,
+      left_join: f in Follow,
+      on: f.followed_id == p.user_id and f.follower_id == ^user_id,
+      where: p.user_id == ^user_id or not is_nil(f.followed_id)
+    )
+  end
+
+  defp filter_feed_tab(query, "mercato") do
+    from(p in query, where: p.intention == :showcase)
+  end
+
+  defp filter_feed_tab(query, "opportunities") do
+    from(p in query, where: p.intention == :recruitment)
+  end
+
+  defp filter_feed_tab(query, _tab), do: query
+
+  defp sort_feed(query, "recent") do
+    from(p in query, order_by: [desc: p.inserted_at])
+  end
+
+  defp sort_feed(query, "relevance") do
+    from(p in query,
+      order_by: [
+        desc:
+          fragment(
+            "COALESCE(?, 0) * 3 + CASE WHEN ? = 'showcase' THEN 4 WHEN ? = 'recruitment' THEN 3 ELSE 1 END + CASE WHEN ? >= timezone('UTC', now()) - interval '24 hours' THEN 2 ELSE 0 END",
+            p.likes_count,
+            p.intention,
+            p.intention,
+            p.inserted_at
+          ),
+        desc: p.inserted_at
+      ]
+    )
+  end
+
+  defp sort_feed(query, _sort), do: sort_feed(query, "relevance")
 end

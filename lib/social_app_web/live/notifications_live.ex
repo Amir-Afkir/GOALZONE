@@ -17,7 +17,7 @@ defmodule SocialAppWeb.NotificationsLive do
 
     {:ok,
      socket
-     |> assign(:page_context, "Alertes")
+     |> SocialAppWeb.PageShellComponents.assign_shell(:alertes, "Alertes")
      |> assign(:mini_coach, %{
        page: "alertes",
        where: "Alertes (inbox actionnable)",
@@ -43,32 +43,35 @@ defmodule SocialAppWeb.NotificationsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="stack-lg">
-      <header class="panel">
-        <h1 class="section-title">Alertes du vestiaire</h1>
-        <div class="post-actions">
-          <span class="meta-line">Nouvelles alertes: {@unread_count}</span>
-          <.button phx-click="mark_all_read">Tout valider</.button>
-        </div>
-      </header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <header class="panel feed-panel matchday-hero">
+          <p class="kicker">Inbox actionnable</p>
+          <h1 class="section-title">Alertes du vestiaire</h1>
+          <div class="post-actions">
+            <span class="meta-line">Nouvelles alertes: {@unread_count}</span>
+            <.button phx-click="mark_all_read">Tout valider</.button>
+          </div>
+        </header>
 
-      <article :for={notification <- @notifications} class="panel">
-        <div class="meta-line">
-          <strong>{notification_label(notification.type)}</strong>
-          par @{(notification.origin_user && notification.origin_user.username) || "inconnu"}
-        </div>
-        <a
-          :if={notification_link(notification)}
-          href={notification_link(notification)}
-          class="text-link"
-        >
-          Ouvrir
-        </a>
-        <div class="meta-line">
-          Statut: {if notification.read, do: "lu", else: "non lu"}
-        </div>
-      </article>
-    </section>
+        <article :for={notification <- @notifications} class="panel feed-panel">
+          <div class="meta-line">
+            <strong>{notification_label(notification.type)}</strong>
+            par @{(notification.origin_user && notification.origin_user.username) || "inconnu"}
+          </div>
+          <a
+            :if={notification_link(notification)}
+            href={notification_link(notification)}
+            class="text-link"
+          >
+            Ouvrir
+          </a>
+          <div class="meta-line">
+            Statut: {if notification.read, do: "lu", else: "non lu"}
+          </div>
+        </article>
+      </section>
+    </.goalzone_shell>
     """
   end
 

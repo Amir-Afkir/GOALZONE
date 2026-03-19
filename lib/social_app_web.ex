@@ -55,6 +55,7 @@ defmodule SocialAppWeb do
     quote do
       import Phoenix.HTML
       import SocialAppWeb.CoreComponents
+      import SocialAppWeb.PageShellComponents
       alias Phoenix.LiveView.JS
 
       unquote(verified_routes())

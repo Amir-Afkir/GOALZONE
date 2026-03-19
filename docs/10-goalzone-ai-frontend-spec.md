@@ -42,7 +42,7 @@ The UI should feel like a mix of:
 Every frontend decision must support these 3 outcomes:
 
 1. **Publish first highlight quickly**
-2. **Discover and follow talents**
+2. **Discover and follow mercato**
 3. **Build network in the first session**
 
 Core desired actions:
@@ -136,7 +136,7 @@ Sidebar
 Feed tabs
 Composer
 Empty state or feed posts
-Talents suggestions
+Mercato suggestions
 Right suggestions
 Coach IA
 ```
@@ -147,9 +147,112 @@ Coach IA
 1. Feed tabs
 2. Composer
 3. Compact onboarding / empty state
-4. Suggested talents or first cards
+4. Suggested mercato or first cards
 5. Feed content
 ```
+
+## Cross-page product flow
+
+GoalZone's core page flow must stay readable across the app:
+
+```txt
+Terrain -> Mercato -> Reseau -> Messages
+```
+
+Meaning:
+
+- `Terrain` = publish and enter the product quickly
+- `Mercato` = discover opportunities and qualify targets
+- `Reseau` = convert interesting profiles into active connections
+- `Messages` = move a connection toward a concrete next step
+
+Each page should feel distinct, but they must clearly belong to the same product system.
+
+## Page pattern roles
+
+### `Terrain` = action-first feed page
+
+This page is the primary activation surface.
+
+It should prioritize:
+
+- immediate publishing
+- simple feed controls
+- clear discovery of first opportunities
+- fast understanding of the product
+
+Its pattern is:
+
+```txt
+Toolbar
+Composer
+Onboarding or first useful content
+Feed stream
+```
+
+### `Mercato` = editorial board page
+
+This page is the strongest internal reference for structured central-column hierarchy.
+
+It should prioritize:
+
+- strong page promise
+- one clear primary CTA and one supporting CTA
+- search / filter / board rhythm
+- highly scannable opportunity cards
+
+Its pattern is:
+
+```txt
+Title ribbon or compact hero
+Intro action shell
+Search and filters
+Results board
+```
+
+### `Reseau` = relational activation page
+
+This page should not behave like a flat directory.
+
+It should prioritize:
+
+- identifying who to connect with now
+- distinguishing suggestions from existing relationships
+- helping the user move from connection to conversation
+- keeping the next action obvious
+
+Its recommended pattern is:
+
+```txt
+Compact hero
+Relationship dashboard
+Profiles to connect now
+Active network
+Bridge to messages
+```
+
+### `Messages` = conversion page
+
+This page exists to continue momentum started on `Reseau`.
+
+It should prioritize:
+
+- clear thread hierarchy
+- strong next-step language
+- low-friction follow-up actions
+
+## Current implementation mismatch
+
+At the time of writing, `/reseau` is functionally useful but does not yet fully match the intended page pattern above.
+
+Current gap:
+
+- the page behaves more like a simple directory list
+- the central hierarchy is weaker than on `/mercato`
+- suggestions and active connections are not visually differentiated enough
+- the transition from `Reseau` to `Messages` is not strong enough in the main content area
+
+This mismatch should be treated as a frontend refactor target, not as the desired long-term product standard.
 
 ---
 
@@ -407,7 +510,7 @@ Never:
 ### Navigation items
 
 - TERRAIN
-- TALENTS
+- MERCATO
 - RESEAU
 - MESSAGES
 - ALERTES
@@ -445,7 +548,7 @@ Tabs:
 
 - Pour vous
 - Abonnes
-- Talents
+- Mercato
 - Opportunites
 
 Style:
@@ -541,7 +644,7 @@ Publie ton premier highlight et commence a construire ton reseau.
 CTA hierarchy:
 
 1. Publier un highlight
-2. Explorer / Suivre des talents
+2. Explorer / Suivre des mercato
 
 Avoid long paragraphs.
 
@@ -607,7 +710,7 @@ A product guide, not a tooltip.
 ### Recommended content
 
 - Publish your first highlight
-- Follow 5 talents
+- Follow 5 mercato
 - Activate your network
 
 ### Rules
@@ -757,7 +860,7 @@ GoalzoneLayout
 |  |- FeedTabs
 |  |- FeedComposer
 |  |- EmptyStateCard
-|  |- TalentsRow
+|  |- MercatoRow
 |  `- FeedList
 `- RightSidebar
    |- SuggestionsCard
@@ -779,7 +882,7 @@ Copy must be:
 Good examples:
 
 - Publie ton highlight
-- Suivre des talents
+- Suivre des mercato
 - Explorer le reseau
 - Active ton reseau
 

@@ -1,50 +1,48 @@
-<header :if={!assigns[:hide_app_header]} class="app-topbar">
-  <div class="app-shell app-topbar-inner">
-    <div class="app-brand-row">
-      <div class="app-topbar-block">
-        <a class="app-logo" href={~p"/"}>GoalZone</a>
-        <p :if={assigns[:page_context]} class="app-current">
-          Tu es ici: {assigns[:page_context]}
-        </p>
-      </div>
+<div class={app_layout_classes(assigns)}>
+  <header :if={show_app_header?(assigns)} class={app_header_classes(assigns)}>
+    <div class={["app-topbar-inner"] ++ app_shell_classes(assigns)}>
+      <div class="app-brand-row">
+        <div class="app-topbar-block">
+          <a class="app-logo" href={~p"/"}>GoalZone</a>
+          <p :if={assigns[:page_context]} class="app-current">
+            Tu es ici: {assigns[:page_context]}
+          </p>
+        </div>
 
-      <div :if={@current_user} class="app-account">
-        <span class="app-user-mail">{@current_user.email}</span>
-        <.link href={~p"/users/settings"} class="ghost-link">Settings</.link>
-        <.link href={~p"/users/log_out"} method="delete" class="ghost-link">Log out</.link>
+        <div :if={@current_user} class="app-account">
+          <span class="app-user-mail">{@current_user.email}</span>
+          <.link href={~p"/users/settings"} class="ghost-link">Settings</.link>
+          <.link href={~p"/users/log_out"} method="delete" class="ghost-link">Log out</.link>
+        </div>
+        <div :if={!@current_user} class="app-account">
+          <span class="ghost-link app-auth-pill">Register</span>
+        </div>
       </div>
-      <div :if={!@current_user} class="app-account">
-        <span class="ghost-link app-auth-pill">Register</span>
-      </div>
+      <nav :if={show_topbar_nav?(assigns)} class="app-links">
+        <a href={~p"/"}>Terrain</a>
+        <a href={~p"/mercato"}>Mercato</a>
+        <a href={~p"/reseau"}>Reseau</a>
+        <a href={~p"/messages"}>Messages</a>
+        <a href={~p"/alertes"}>Alertes</a>
+        <a href={~p"/profile/#{@current_user.username}"}>Profil</a>
+      </nav>
     </div>
-    <nav :if={@current_user && !assigns[:use_sidebar_nav]} class="app-links">
-      <a href={~p"/"}>Terrain</a>
-      <a href={~p"/talents"}>Talents</a>
-      <a href={~p"/reseau"}>Reseau</a>
-      <a href={~p"/messages"}>Messages</a>
-      <a href={~p"/alertes"}>Alertes</a>
-      <a href={~p"/profile/#{@current_user.username}"}>Profil</a>
-    </nav>
-  </div>
-</header>
+  </header>
 
-<main class={[
-  "app-main",
-  !assigns[:hide_app_header] && "app-shell",
-  assigns[:use_wide_layout] && !assigns[:hide_app_header] && "app-shell-wide",
-  assigns[:hide_app_header] && "app-main-no-header",
-  assigns[:hide_app_header] && "app-main-feed"
-]}>
-  <.flash_group flash={@flash} />
-  {@inner_content}
-</main>
+  <main class={app_main_classes(assigns)}>
+    <div class={app_content_classes(assigns)}>
+      <.flash_group flash={@flash} />
+      {@inner_content}
+    </div>
+  </main>
 
-<.mini_coach
-  :if={assigns[:mini_coach]}
-  page={assigns[:mini_coach].page}
-  where={assigns[:mini_coach].where}
-  goal={assigns[:mini_coach].goal}
-  next={assigns[:mini_coach].next}
-  cta_to={assigns[:mini_coach].cta_to}
-  cta_label={assigns[:mini_coach].cta_label}
-/>
+  <.mini_coach
+    :if={assigns[:mini_coach]}
+    page={assigns[:mini_coach].page}
+    where={assigns[:mini_coach].where}
+    goal={assigns[:mini_coach].goal}
+    next={assigns[:mini_coach].next}
+    cta_to={assigns[:mini_coach].cta_to}
+    cta_label={assigns[:mini_coach].cta_label}
+  />
+</div>

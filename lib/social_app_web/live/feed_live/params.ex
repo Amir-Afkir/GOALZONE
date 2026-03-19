@@ -6,7 +6,7 @@ defmodule SocialAppWeb.FeedLive.Params do
   @feed_tabs [
     %{value: "for_you", label: "Pour vous"},
     %{value: "following", label: "Abonnes"},
-    %{value: "talents", label: "Talents"},
+    %{value: "mercato", label: "Mercato"},
     %{value: "opportunities", label: "Opportunites"}
   ]
   @feed_sorts [

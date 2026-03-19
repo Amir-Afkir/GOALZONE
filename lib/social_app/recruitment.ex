@@ -4,8 +4,11 @@ defmodule SocialApp.Recruitment do
   """
 
   import Ecto.Query, warn: false
+  alias Ecto.Multi
 
   alias SocialApp.Repo
+  alias SocialApp.Accounts.User
+  alias SocialApp.Feed
   alias SocialApp.Notifications
   alias SocialApp.Posts.Post
   alias SocialApp.Recruitment.ShortlistEntry
@@ -22,6 +25,15 @@ defmodule SocialApp.Recruitment do
       order_by: [desc: s.updated_at],
       limit: ^limit,
       preload: [post: :user]
+    )
+    |> Repo.all()
+  end
+
+  def list_entries_for_posts(_user_id, []), do: []
+
+  def list_entries_for_posts(user_id, post_ids) do
+    from(s in ShortlistEntry,
+      where: s.user_id == ^user_id and s.post_id in ^post_ids
     )
     |> Repo.all()
   end
@@ -73,6 +85,47 @@ defmodule SocialApp.Recruitment do
     else
       nil -> {:error, :not_found}
       _ -> {:error, :final_stage}
+    end
+  end
+
+  def publish_announcement(%User{} = user, attrs) do
+    attrs = Map.new(attrs)
+
+    user_changeset =
+      user
+      |> User.profile_changeset(
+        %{
+          region: Map.get(attrs, :region),
+          role: Map.get(attrs, :role),
+          level: Map.get(attrs, :level),
+          availability: Map.get(attrs, :availability)
+        },
+        validate_email: false,
+        validate_username: false
+      )
+      |> Ecto.Changeset.validate_required([:region, :role, :level, :availability])
+
+    post_attrs = %{
+      content: Map.get(attrs, :content),
+      user_id: user.id,
+      post_format: :article,
+      intention: :recruitment,
+      source_type: :unknown
+    }
+
+    post_changeset = Post.changeset(%Post{}, post_attrs)
+
+    Multi.new()
+    |> Multi.update(:user, user_changeset)
+    |> Multi.insert(:post, post_changeset)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: updated_user, post: post}} ->
+        Feed.fan_out_post_async(post)
+        {:ok, %{user: updated_user, post: post}}
+
+      {:error, step, changeset, _changes_so_far} ->
+        {:error, step, changeset}
     end
   end
 

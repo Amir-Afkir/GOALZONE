@@ -14,6 +14,34 @@ defmodule SocialApp.Posts do
     |> Repo.all()
   end
 
+  def list_recruitment_posts(filters \\ %{}, opts \\ []) do
+    exclude_user_id = Keyword.get(opts, :exclude_user_id)
+    limit = Keyword.get(opts, :limit, 12)
+    viewer_region = Keyword.get(opts, :viewer_region)
+
+    Post
+    |> join(:inner, [p], u in assoc(p, :user))
+    |> where([p, _u], p.intention == :recruitment)
+    |> maybe_exclude_post_author(exclude_user_id)
+    |> apply_recruitment_filters(filters)
+    |> apply_recruitment_order(viewer_region)
+    |> preload([_p, u], user: u)
+    |> limit(^limit)
+    |> Repo.all()
+  end
+
+  def count_recruitment_posts(filters \\ %{}, opts \\ []) do
+    exclude_user_id = Keyword.get(opts, :exclude_user_id)
+
+    Post
+    |> join(:inner, [p], u in assoc(p, :user))
+    |> where([p, _u], p.intention == :recruitment)
+    |> maybe_exclude_post_author(exclude_user_id)
+    |> apply_recruitment_filters(filters)
+    |> select([p, _u], count(p.id))
+    |> Repo.one()
+  end
+
   def list_posts_by_user(user_id, limit \\ 30) do
     from(p in Post,
       where: p.user_id == ^user_id,
@@ -126,5 +154,58 @@ defmodule SocialApp.Posts do
       limit: ^limit
     )
     |> Repo.all()
+  end
+
+  defp maybe_exclude_post_author(query, nil), do: query
+
+  defp maybe_exclude_post_author(query, user_id) do
+    from([p, u] in query, where: u.id != ^user_id)
+  end
+
+  defp apply_recruitment_filters(query, filters) do
+    Enum.reduce(filters, query, fn
+      {:q, q}, acc when is_binary(q) and q != "" ->
+        pattern = "%#{q}%"
+
+        from([p, u] in acc,
+          where:
+            ilike(p.content, ^pattern) or ilike(u.username, ^pattern) or
+              ilike(u.headline, ^pattern) or ilike(u.position, ^pattern) or
+              ilike(u.region, ^pattern) or ilike(p.competition, ^pattern) or
+              ilike(p.opponent, ^pattern)
+        )
+
+      {:region, region}, acc when is_binary(region) and region != "" ->
+        from([_p, u] in acc, where: u.region == ^region)
+
+      {:role, role}, acc when role in [:player, :coach, :agent, :scout, :club] ->
+        from([_p, u] in acc, where: u.role == ^role)
+
+      {:level, level}, acc when level in [:espoir, :confirme, :elite] ->
+        from([_p, u] in acc, where: u.level == ^level)
+
+      {:availability, availability}, acc when availability in [:open, :monitoring, :closed] ->
+        from([_p, u] in acc, where: u.availability == ^availability)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp apply_recruitment_order(query, viewer_region) do
+    from([p, u] in query,
+      order_by: [
+        desc: fragment("CASE WHEN ? = 'open' THEN 1 ELSE 0 END", u.availability),
+        desc:
+          fragment(
+            "CASE WHEN COALESCE(?, '') <> '' AND ? = ? THEN 1 ELSE 0 END",
+            u.region,
+            u.region,
+            ^viewer_region
+          ),
+        desc: fragment("COALESCE(?, 0)", p.confidence_score),
+        desc: p.inserted_at
+      ]
+    )
   end
 end

@@ -9,8 +9,9 @@ defmodule SocialAppWeb.ProfileLive.Edit do
     form_params = form_params_from_user(user)
 
     {:ok,
-     assign(socket,
-       page_context: "Edition profil",
+     socket
+     |> SocialAppWeb.PageShellComponents.assign_shell(:profil, "Edition profil")
+     |> assign(
        mini_coach: %{
          page: "profil-edit",
          where: "Edition profil",
@@ -59,141 +60,143 @@ defmodule SocialAppWeb.ProfileLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="stack-lg">
-      <header class="panel matchday-hero">
-        <p class="kicker">Profile Setup</p>
-        <h1 class="section-title">Editer mon profil</h1>
-        <p class="section-subtitle">
-          Mets a jour ton role, ton contexte sportif et tes preuves recrutement.
-        </p>
-      </header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <header class="panel feed-panel matchday-hero">
+          <p class="kicker">Profile Setup</p>
+          <h1 class="section-title">Editer mon profil</h1>
+          <p class="section-subtitle">
+            Mets a jour ton role, ton contexte sportif et tes preuves recrutement.
+          </p>
+        </header>
 
-      <form phx-submit="save" phx-change="validate" class="panel stack-md">
-        <div class="filters-grid">
-          <label class="field-wrap">
-            <span class="field-label">Role</span>
-            <select name={@form[:role].name} class="field-input">
-              <option
-                :for={role <- Labels.role_values()}
-                value={Atom.to_string(role)}
-                selected={@form[:role].value == Atom.to_string(role)}
-              >
-                {Labels.role_label(role)}
-              </option>
-            </select>
-          </label>
+        <form phx-submit="save" phx-change="validate" class="panel feed-panel stack-md">
+          <div class="filters-grid">
+            <label class="field-wrap">
+              <span class="field-label">Role</span>
+              <select name={@form[:role].name} class="field-input">
+                <option
+                  :for={role <- Labels.role_values()}
+                  value={Atom.to_string(role)}
+                  selected={@form[:role].value == Atom.to_string(role)}
+                >
+                  {Labels.role_label(role)}
+                </option>
+              </select>
+            </label>
 
-          <label class="field-wrap">
-            <span class="field-label">Niveau</span>
-            <select name={@form[:level].name} class="field-input">
-              <option
-                :for={level <- Labels.level_values()}
-                value={Atom.to_string(level)}
-                selected={@form[:level].value == Atom.to_string(level)}
-              >
-                {Labels.level_label(level)}
-              </option>
-            </select>
-          </label>
+            <label class="field-wrap">
+              <span class="field-label">Niveau</span>
+              <select name={@form[:level].name} class="field-input">
+                <option
+                  :for={level <- Labels.level_values()}
+                  value={Atom.to_string(level)}
+                  selected={@form[:level].value == Atom.to_string(level)}
+                >
+                  {Labels.level_label(level)}
+                </option>
+              </select>
+            </label>
 
-          <label class="field-wrap">
-            <span class="field-label">Disponibilite</span>
-            <select name={@form[:availability].name} class="field-input">
-              <option
-                :for={availability <- Labels.availability_values()}
-                value={Atom.to_string(availability)}
-                selected={@form[:availability].value == Atom.to_string(availability)}
-              >
-                {Labels.availability_label(availability)}
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <label class="field-wrap">
-          <span class="field-label">Headline</span>
-          <input name={@form[:headline].name} value={@form[:headline].value} class="field-input" />
-        </label>
-
-        <div class="filters-grid">
-          <label class="field-wrap">
-            <span class="field-label">Poste / specialite</span>
-            <input name={@form[:position].name} value={@form[:position].value} class="field-input" />
-          </label>
+            <label class="field-wrap">
+              <span class="field-label">Disponibilite</span>
+              <select name={@form[:availability].name} class="field-input">
+                <option
+                  :for={availability <- Labels.availability_values()}
+                  value={Atom.to_string(availability)}
+                  selected={@form[:availability].value == Atom.to_string(availability)}
+                >
+                  {Labels.availability_label(availability)}
+                </option>
+              </select>
+            </label>
+          </div>
 
           <label class="field-wrap">
-            <span class="field-label">Age</span>
-            <input
-              type="number"
-              name={@form[:age].name}
-              value={@form[:age].value}
-              min="12"
-              max="60"
-              class="field-input"
-            />
+            <span class="field-label">Headline</span>
+            <input name={@form[:headline].name} value={@form[:headline].value} class="field-input" />
           </label>
+
+          <div class="filters-grid">
+            <label class="field-wrap">
+              <span class="field-label">Poste / specialite</span>
+              <input name={@form[:position].name} value={@form[:position].value} class="field-input" />
+            </label>
+
+            <label class="field-wrap">
+              <span class="field-label">Age</span>
+              <input
+                type="number"
+                name={@form[:age].name}
+                value={@form[:age].value}
+                min="12"
+                max="60"
+                class="field-input"
+              />
+            </label>
+
+            <label class="field-wrap">
+              <span class="field-label">Region</span>
+              <input name={@form[:region].name} value={@form[:region].value} class="field-input" />
+            </label>
+          </div>
 
           <label class="field-wrap">
-            <span class="field-label">Region</span>
-            <input name={@form[:region].name} value={@form[:region].value} class="field-input" />
-          </label>
-        </div>
-
-        <label class="field-wrap">
-          <span class="field-label">Bio</span>
-          <textarea name={@form[:bio].name} class="composer-textarea">{@form[:bio].value}</textarea>
-        </label>
-
-        <div class="filters-grid">
-          <label class="field-wrap">
-            <span class="field-label">Source</span>
-            <select name={@form[:source_type].name} class="field-input">
-              <option
-                value="highlight_video"
-                selected={@form[:source_type].value == "highlight_video"}
-              >
-                Video highlight
-              </option>
-              <option
-                value="full_match_video"
-                selected={@form[:source_type].value == "full_match_video"}
-              >
-                Video match complet
-              </option>
-              <option
-                value="live_observation"
-                selected={@form[:source_type].value == "live_observation"}
-              >
-                Observation live
-              </option>
-              <option value="stat_report" selected={@form[:source_type].value == "stat_report"}>
-                Rapport stats
-              </option>
-              <option value="unknown" selected={@form[:source_type].value == "unknown"}>
-                Non precise
-              </option>
-            </select>
+            <span class="field-label">Bio</span>
+            <textarea name={@form[:bio].name} class="composer-textarea">{@form[:bio].value}</textarea>
           </label>
 
-          <label class="field-wrap">
-            <span class="field-label">Confiance (0-100)</span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              name={@form[:confidence_score].name}
-              value={@form[:confidence_score].value}
-              class="field-input"
-            />
-          </label>
-        </div>
+          <div class="filters-grid">
+            <label class="field-wrap">
+              <span class="field-label">Source</span>
+              <select name={@form[:source_type].name} class="field-input">
+                <option
+                  value="highlight_video"
+                  selected={@form[:source_type].value == "highlight_video"}
+                >
+                  Video highlight
+                </option>
+                <option
+                  value="full_match_video"
+                  selected={@form[:source_type].value == "full_match_video"}
+                >
+                  Video match complet
+                </option>
+                <option
+                  value="live_observation"
+                  selected={@form[:source_type].value == "live_observation"}
+                >
+                  Observation live
+                </option>
+                <option value="stat_report" selected={@form[:source_type].value == "stat_report"}>
+                  Rapport stats
+                </option>
+                <option value="unknown" selected={@form[:source_type].value == "unknown"}>
+                  Non precise
+                </option>
+              </select>
+            </label>
 
-        <div class="post-actions">
-          <.button type="submit">Enregistrer</.button>
-          <a href={~p"/profile/#{@current_user.username}"} class="ghost-link">Annuler</a>
-        </div>
-      </form>
-    </section>
+            <label class="field-wrap">
+              <span class="field-label">Confiance (0-100)</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                name={@form[:confidence_score].name}
+                value={@form[:confidence_score].value}
+                class="field-input"
+              />
+            </label>
+          </div>
+
+          <div class="post-actions">
+            <.button type="submit">Enregistrer</.button>
+            <a href={~p"/profile/#{@current_user.username}"} class="ghost-link">Annuler</a>
+          </div>
+        </form>
+      </section>
+    </.goalzone_shell>
     """
   end
 

@@ -5,31 +5,44 @@ defmodule SocialAppWeb.UserConfirmationInstructionsLive do
 
   def render(assigns) do
     ~H"""
-    <div class="panel auth-card">
-      <.header>
-        No confirmation instructions received?
-        <:subtitle>We'll send a new confirmation link to your inbox</:subtitle>
-      </.header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <section class="panel feed-panel matchday-hero">
+          <p class="kicker">Confirm</p>
+          <h1 class="section-title">No confirmation instructions received?</h1>
+          <p class="section-subtitle">Renvoie le lien de confirmation pour activer le compte.</p>
+        </section>
 
-      <.simple_form for={@form} id="resend_confirmation_form" phx-submit="send_instructions">
-        <.input field={@form[:email]} type="email" placeholder="Email" required />
-        <:actions>
-          <.button phx-disable-with="Sending...">
-            Resend confirmation instructions
-          </.button>
-        </:actions>
-      </.simple_form>
+        <div class="panel feed-panel auth-card">
+          <.header>
+            No confirmation instructions received?
+            <:subtitle>We'll send a new confirmation link to your inbox</:subtitle>
+          </.header>
 
-      <p class="info-link-row">
-        <.link href={~p"/users/register"} class="text-link">Register</.link>
-        | <.link href={~p"/users/log_in"} class="text-link">Log in</.link>
-      </p>
-    </div>
+          <.simple_form for={@form} id="resend_confirmation_form" phx-submit="send_instructions">
+            <.input field={@form[:email]} type="email" placeholder="Email" required />
+            <:actions>
+              <.button phx-disable-with="Sending...">
+                Resend confirmation instructions
+              </.button>
+            </:actions>
+          </.simple_form>
+
+          <p class="info-link-row">
+            <.link href={~p"/users/register"} class="text-link">Register</.link>
+            | <.link href={~p"/users/log_in"} class="text-link">Log in</.link>
+          </p>
+        </div>
+      </section>
+    </.goalzone_shell>
     """
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: "user"))}
+    {:ok,
+     socket
+     |> SocialAppWeb.PageShellComponents.assign_shell(:confirm, "Instructions confirmation")
+     |> assign(form: to_form(%{}, as: "user"))}
   end
 
   def handle_event("send_instructions", %{"user" => %{"email" => email}}, socket) do

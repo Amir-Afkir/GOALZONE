@@ -1,4 +1,6 @@
-// Lightweight client behaviors without bundling requirements.
+import "phoenix_html";
+import {Socket} from "phoenix";
+import {LiveSocket} from "phoenix_live_view";
 
 const COACH_KEY_PREFIX = "goalzone-mini-coach-dismissed:";
 
@@ -71,54 +73,130 @@ function bootMiniCoach() {
   });
 }
 
-function submitMethodLink(link) {
-  const method = (link.getAttribute("data-method") || "").toLowerCase();
-  if (!method) return false;
+function initFeedTabsScroller(shell) {
+  const tabs = shell.querySelector("[data-feed-tabs]");
+  const leftArrow = shell.querySelector('[data-feed-tabs-arrow="left"]');
+  const rightArrow = shell.querySelector('[data-feed-tabs-arrow="right"]');
 
-  const to = link.getAttribute("data-to") || link.getAttribute("href");
-  if (!to) return false;
+  if (!tabs || !leftArrow || !rightArrow) return;
 
-  const csrf =
-    link.getAttribute("data-csrf") ||
-    document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ||
-    "";
+  const syncState = () => {
+    const maxScrollLeft = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
+    const overflowing = maxScrollLeft > 1;
+    const canScrollLeft = tabs.scrollLeft > 1;
+    const canScrollRight = tabs.scrollLeft < maxScrollLeft - 1;
 
-  const form = document.createElement("form");
-  form.method = "post";
-  form.action = to;
-  form.style.display = "none";
+    shell.dataset.overflowing = overflowing ? "true" : "false";
+    shell.dataset.canScrollLeft = canScrollLeft ? "true" : "false";
+    shell.dataset.canScrollRight = canScrollRight ? "true" : "false";
 
-  const methodInput = document.createElement("input");
-  methodInput.type = "hidden";
-  methodInput.name = "_method";
-  methodInput.value = method;
-  form.appendChild(methodInput);
+    leftArrow.disabled = !canScrollLeft;
+    rightArrow.disabled = !canScrollRight;
+  };
 
-  if (csrf) {
-    const csrfInput = document.createElement("input");
-    csrfInput.type = "hidden";
-    csrfInput.name = "_csrf_token";
-    csrfInput.value = csrf;
-    form.appendChild(csrfInput);
+  shell._feedTabsSync = syncState;
+
+  const scrollTabs = (direction) => {
+    const distance = Math.max(160, Math.round(tabs.clientWidth * 0.72));
+
+    tabs.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth"
+    });
+  };
+
+  leftArrow.addEventListener("click", () => scrollTabs("left"));
+  rightArrow.addEventListener("click", () => scrollTabs("right"));
+  tabs.addEventListener("scroll", syncState, {passive: true});
+
+  if ("ResizeObserver" in window) {
+    const observer = new ResizeObserver(syncState);
+    observer.observe(tabs);
+    shell._feedTabsObserver = observer;
+  } else {
+    window.addEventListener("resize", syncState);
   }
 
-  document.body.appendChild(form);
-  form.submit();
-  return true;
+  requestAnimationFrame(syncState);
 }
 
-function handleMethodLinks(event) {
-  const link = event.target.closest("a[data-method]");
-  if (!link) return;
+function bootFeedTabsScroller() {
+  document.querySelectorAll("[data-feed-tabs-shell]").forEach((shell) => {
+    if (!shell.dataset.feedTabsBooted) {
+      shell.dataset.feedTabsBooted = "1";
+      initFeedTabsScroller(shell);
+      return;
+    }
 
-  if (submitMethodLink(link)) {
-    event.preventDefault();
+    shell._feedTabsSync?.();
+  });
+}
+
+const Hooks = {
+  MessagesWorkspace: {
+    mounted() {
+      this.handleKeydown = (event) => {
+        const target = event.target;
+        const tagName = target?.tagName;
+        const isEditable =
+          target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(tagName);
+
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          const searchInput = this.el.querySelector("[data-messages-search-input]");
+
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select?.();
+          }
+
+          return;
+        }
+
+        if (target?.matches?.("[data-messages-composer]") && event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          target.form?.requestSubmit();
+          return;
+        }
+
+        if (isEditable) return;
+
+        if (event.key === "j") {
+          event.preventDefault();
+          this.pushEvent("messages_shortcut", {action: "next_thread"});
+        }
+
+        if (event.key === "k") {
+          event.preventDefault();
+          this.pushEvent("messages_shortcut", {action: "previous_thread"});
+        }
+      };
+
+      this.el.addEventListener("keydown", this.handleKeydown);
+    },
+
+    destroyed() {
+      this.el.removeEventListener("keydown", this.handleKeydown);
+    }
   }
-}
+};
+
+const csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content");
+
+const liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   bootMiniCoach();
-  document.addEventListener("click", handleMethodLinks);
+  bootFeedTabsScroller();
 });
 
-window.addEventListener("phx:page-loading-stop", bootMiniCoach);
+window.addEventListener("phx:page-loading-stop", () => {
+  bootMiniCoach();
+  bootFeedTabsScroller();
+});
+
+liveSocket.connect();
+window.liveSocket = liveSocket;

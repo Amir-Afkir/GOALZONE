@@ -15,7 +15,10 @@ config :social_app, SocialAppWeb.Endpoint,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "I5Z5w5F4Vv3kW2fP8W4u8eX3Y6J2nQ5oN4dE8aG2wP7kH3vR1xC9mT6yB4qS2zL9uE3mA7nB5dT2",
-  watchers: []
+  watchers: [
+    esbuild_js: {Esbuild, :install_and_run, [:js, ~w(--sourcemap=inline --watch)]},
+    esbuild_css: {Esbuild, :install_and_run, [:css, ~w(--sourcemap=inline --watch)]}
+  ]
 
 config :social_app, SocialAppWeb.Endpoint,
   live_reload: [
@@ -34,3 +37,7 @@ config :phoenix, :plug_init_mode, :runtime
 config :social_app, :dns_cluster_query, :ignore
 config :social_app, :dev_routes, true
 config :social_app, SocialApp.Mailer, adapter: Swoosh.Adapters.Local
+
+config :phoenix_live_view,
+  debug_heex_annotations: true,
+  enable_expensive_runtime_checks: true

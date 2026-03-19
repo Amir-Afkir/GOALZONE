@@ -93,7 +93,7 @@ defmodule SocialAppWeb.UserResetPasswordLiveTest do
 
       {:ok, conn} =
         lv
-        |> element(~s|a[href="/users/log_in"]|)
+        |> element(~s|.auth-card .info-link-row a[href="/users/log_in"]|)
         |> render_click()
         |> follow_redirect(conn, ~p"/users/log_in")
 
@@ -108,7 +108,7 @@ defmodule SocialAppWeb.UserResetPasswordLiveTest do
 
       {:ok, conn} =
         lv
-        |> element(~s|a[href="/users/register"]|)
+        |> element(~s|.auth-card .info-link-row a[href="/users/register"]|)
         |> render_click()
         |> follow_redirect(conn, ~p"/users/register")
 

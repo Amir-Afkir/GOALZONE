@@ -1,30 +1,21 @@
 defmodule SocialApp.AssetsTasksTest do
   use ExUnit.Case, async: false
 
-  setup do
-    static_css = Path.join([File.cwd!(), "priv", "static", "assets", "app.css"])
-    original_css = File.read!(static_css)
+  test "project defines build and deploy aliases for assets" do
+    aliases = Mix.Project.config()[:aliases] |> Enum.into(%{})
 
-    on_exit(fn ->
-      File.write!(static_css, original_css)
-    end)
+    assert alias_value(aliases, "assets.setup") == ["esbuild.install --if-missing"]
+    assert alias_value(aliases, "assets.sync") == ["assets.build"]
+    assert alias_value(aliases, "assets.build") == ["compile", "esbuild js", "esbuild css"]
 
-    :ok
+    assert alias_value(aliases, "assets.deploy") == [
+             "esbuild js --minify",
+             "esbuild css --minify",
+             "phx.digest"
+           ]
   end
 
-  test "assets.verify passes when files are synchronized" do
-    Mix.Task.reenable("assets.verify")
-    assert :ok = Mix.Task.run("assets.verify")
-  end
-
-  test "assets.verify fails when files are out of sync" do
-    static_css = Path.join([File.cwd!(), "priv", "static", "assets", "app.css"])
-    File.write!(static_css, File.read!(static_css) <> "\n/* drift */\n")
-
-    Mix.Task.reenable("assets.verify")
-
-    assert_raise Mix.Error, ~r/Asset drift detected/, fn ->
-      Mix.Task.run("assets.verify")
-    end
+  defp alias_value(aliases, key) do
+    Map.get(aliases, key) || Map.get(aliases, String.to_atom(key))
   end
 end

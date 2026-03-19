@@ -15,8 +15,9 @@ defmodule SocialAppWeb.Endpoint do
   plug Plug.Static,
     at: "/",
     from: :social_app,
-    gzip: false,
-    only: SocialAppWeb.static_paths()
+    gzip: Mix.env() == :prod,
+    only: SocialAppWeb.static_paths(),
+    raise_on_missing_only: Mix.env() == :dev
 
   if code_reloading? do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket

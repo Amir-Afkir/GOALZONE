@@ -9,7 +9,7 @@ defmodule SocialAppWeb.FeedLive.Stream do
     Enum.filter(posts, fn post -> post.user_id == user_id or post.user_id in followed_ids end)
   end
 
-  def filter_feed_tab(posts, "talents", _user_id, _followed_ids) do
+  def filter_feed_tab(posts, "mercato", _user_id, _followed_ids) do
     Enum.filter(posts, &(post_intention(&1) == :showcase))
   end
 
@@ -37,7 +37,7 @@ defmodule SocialAppWeb.FeedLive.Stream do
     post.user_id == user_id or post.user_id in followed_ids
   end
 
-  defp post_matches_tab_inner?(post, "talents", _user_id, _followed_ids),
+  defp post_matches_tab_inner?(post, "mercato", _user_id, _followed_ids),
     do: post_intention(post) == :showcase
 
   defp post_matches_tab_inner?(post, "opportunities", _user_id, _followed_ids),

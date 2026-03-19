@@ -505,4 +505,97 @@ defmodule SocialApp.AccountsTest do
       refute inspect(%User{password: "123456"}) =~ "password: \"123456\""
     end
   end
+
+  describe "directory helpers" do
+    test "list_suggested_users/2 excludes the current user and already-followed users" do
+      viewer = user_fixture()
+      followed = user_fixture()
+      suggested = user_fixture()
+
+      {:ok, _follow} = Accounts.follow_user(viewer.id, followed.id)
+
+      suggestions = Accounts.list_suggested_users(viewer.id, limit: 10)
+      suggestion_ids = Enum.map(suggestions, & &1.id)
+
+      refute viewer.id in suggestion_ids
+      refute followed.id in suggestion_ids
+      assert suggested.id in suggestion_ids
+    end
+
+    test "directory_facets/1 and count_directory/2 use distinct filtered values" do
+      first_user =
+        user_fixture()
+        |> then(fn user ->
+          {:ok, updated_user} =
+            Accounts.update_user(user, %{
+              role: :player,
+              region: "Casablanca",
+              level: :elite,
+              availability: :open
+            })
+
+          updated_user
+        end)
+
+      second_user =
+        user_fixture()
+        |> then(fn user ->
+          {:ok, updated_user} =
+            Accounts.update_user(user, %{
+              role: :scout,
+              region: "Paris",
+              level: :confirme,
+              availability: :monitoring
+            })
+
+          updated_user
+        end)
+
+      facets = Accounts.directory_facets(exclude_user_id: first_user.id)
+
+      refute "Casablanca" in facets.regions
+      assert "Paris" in facets.regions
+      assert :confirme in facets.levels
+      assert :monitoring in facets.availabilities
+
+      assert Accounts.count_directory(%{region: "Paris"}, exclude_user_id: first_user.id) == 1
+      assert Accounts.count_directory(%{role: :player}, exclude_user_id: second_user.id) == 1
+    end
+
+    test "list_directory/2 supports scouting score and headline mission filters" do
+      low_signal =
+        user_fixture()
+        |> then(fn user ->
+          {:ok, updated_user} =
+            Accounts.update_user(user, %{
+              headline: "",
+              confidence_score: 28,
+              availability: :open
+            })
+
+          updated_user
+        end)
+
+      high_signal =
+        user_fixture()
+        |> then(fn user ->
+          {:ok, updated_user} =
+            Accounts.update_user(user, %{
+              headline: "Ailier percutant, disponible maintenant",
+              confidence_score: 81,
+              availability: :open
+            })
+
+          updated_user
+        end)
+
+      results =
+        Accounts.list_directory(%{headline_required: true, min_confidence_score: 70}, limit: 10)
+
+      result_ids = Enum.map(results, & &1.id)
+
+      refute low_signal.id in result_ids
+      assert high_signal.id in result_ids
+    end
+  end
 end

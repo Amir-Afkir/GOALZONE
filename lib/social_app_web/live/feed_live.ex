@@ -9,75 +9,59 @@ defmodule SocialAppWeb.FeedLive do
   @impl true
   def mount(_params, _session, socket) do
     user_id = socket.assigns.current_user.id
-    post_form_values = Params.default_post_form_values()
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(SocialApp.PubSub, "user:#{user_id}")
-      Presence.track(self(), "user:#{user_id}", user_id, %{online_at: DateTime.utc_now()})
-    end
+    socket =
+      socket
+      |> maybe_subscribe_to_user_feed(user_id)
+      |> assign_feed_defaults(user_id)
+      |> load_initial_feed()
 
-    {:ok,
-     assign(socket,
-       page_context: "Terrain",
-       use_sidebar_nav: true,
-       use_wide_layout: true,
-       hide_app_header: true,
-       mini_coach: nil,
-       current_user_id: user_id,
-       composer_open: false,
-       pending_new_posts_count: 0,
-       feed_tab: Params.parse_feed_tab("for_you"),
-       feed_sort: Params.parse_feed_sort("relevance"),
-       feed_tabs: Params.feed_tabs(),
-       feed_sorts: Params.feed_sorts(),
-       followed_user_ids: [],
-       posts: [],
-       suggestions: [],
-       post_form_values: post_form_values,
-       post_form: to_form(post_form_values, as: :post),
-       shortlist_by_post: %{}
-     )
-     |> load_initial_feed()}
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    socket =
+      case params["composer"] do
+        "recruitment" ->
+          open_composer_with_params(socket, %{
+            "intention" => "recruitment",
+            "format" => Map.get(params, "format", "article")
+          })
+
+        "showcase" ->
+          open_composer_with_params(socket, %{
+            "intention" => "showcase",
+            "format" => Map.get(params, "format", "video")
+          })
+
+        _ ->
+          socket
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
   def handle_event("open_composer", params, socket) do
-    values =
-      socket.assigns.post_form_values
-      |> Params.override_format(params["format"])
-      |> Params.override_intention(params["intention"])
-
-    {:noreply,
-     socket
-     |> assign(:composer_open, true)
-     |> assign_post_form(values)}
+    {:noreply, open_composer_with_params(socket, params)}
   end
 
   @impl true
   def handle_event("close_composer", _params, socket) do
-    {:noreply, assign(socket, :composer_open, false)}
+    {:noreply, close_composer(socket)}
   end
 
   @impl true
   def handle_event("post_form_changed", %{"post" => post_params}, socket) do
-    {:noreply,
-     socket
-     |> assign(:composer_open, true)
-     |> assign_post_form(post_params)}
+    {:noreply, socket |> show_composer() |> assign_post_form(post_params)}
   end
 
   @impl true
   def handle_event("create_post", %{"post" => post_params}, socket) do
-    attrs = Params.build_post_attrs(post_params)
-
-    case Posts.create_post(socket.assigns.current_user_id, attrs) do
+    case create_post(socket.assigns.current_user_id, post_params) do
       {:ok, _post} ->
-        {:noreply,
-         socket
-         |> assign(:composer_open, false)
-         |> assign(:pending_new_posts_count, 0)
-         |> assign_post_form(Params.default_post_form_values())
-         |> reload_posts()}
+        {:noreply, reset_after_post_create(socket)}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Impossible de publier le post")}
@@ -89,8 +73,7 @@ defmodule SocialAppWeb.FeedLive do
     {:noreply,
      socket
      |> assign(:feed_tab, Params.parse_feed_tab(tab))
-     |> assign(:pending_new_posts_count, 0)
-     |> reload_posts()}
+     |> refresh_feed()}
   end
 
   @impl true
@@ -98,16 +81,12 @@ defmodule SocialAppWeb.FeedLive do
     {:noreply,
      socket
      |> assign(:feed_sort, Params.parse_feed_sort(sort))
-     |> assign(:pending_new_posts_count, 0)
-     |> reload_posts()}
+     |> refresh_feed()}
   end
 
   @impl true
   def handle_event("show_new_posts", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:pending_new_posts_count, 0)
-     |> reload_posts()}
+    {:noreply, refresh_feed(socket)}
   end
 
   @impl true
@@ -117,7 +96,7 @@ defmodule SocialAppWeb.FeedLive do
       {:noreply, apply_like_update(socket, post.id, post.likes_count || 0)}
     else
       {:error, :invalid_id} ->
-        {:noreply, put_flash(socket, :error, "Action invalide")}
+        {:noreply, invalid_action(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, "Impossible de traiter le like")}
@@ -141,7 +120,7 @@ defmodule SocialAppWeb.FeedLive do
        |> reload_posts()}
     else
       {:error, :invalid_id} ->
-        {:noreply, put_flash(socket, :error, "Action invalide")}
+        {:noreply, invalid_action(socket)}
     end
   end
 
@@ -152,7 +131,7 @@ defmodule SocialAppWeb.FeedLive do
       {:noreply, update_shortlist_entry(socket, parsed_id)}
     else
       {:error, :invalid_id} ->
-        {:noreply, put_flash(socket, :error, "Action invalide")}
+        {:noreply, invalid_action(socket)}
     end
   end
 
@@ -163,7 +142,7 @@ defmodule SocialAppWeb.FeedLive do
       {:noreply, update_shortlist_entry(socket, parsed_id)}
     else
       {:error, :invalid_id} ->
-        {:noreply, put_flash(socket, :error, "Action invalide")}
+        {:noreply, invalid_action(socket)}
     end
   end
 
@@ -196,21 +175,84 @@ defmodule SocialAppWeb.FeedLive do
   @impl true
   def render(assigns), do: Components.render(assigns)
 
+  defp maybe_subscribe_to_user_feed(socket, user_id) do
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(SocialApp.PubSub, "user:#{user_id}")
+      Presence.track(self(), "user:#{user_id}", user_id, %{online_at: DateTime.utc_now()})
+    end
+
+    socket
+  end
+
+  defp assign_feed_defaults(socket, user_id) do
+    post_form_values = Params.default_post_form_values()
+
+    assign(socket,
+      page_context: "Terrain",
+      layout_variant: :feed,
+      nav_variant: :sidebar,
+      shell_variant: :full,
+      mini_coach: nil,
+      current_user_id: user_id,
+      composer_open: false,
+      pending_new_posts_count: 0,
+      feed_tab: Params.parse_feed_tab("for_you"),
+      feed_sort: Params.parse_feed_sort("relevance"),
+      feed_tabs: Params.feed_tabs(),
+      feed_sorts: Params.feed_sorts(),
+      followed_user_ids: [],
+      posts: [],
+      suggestions: [],
+      post_form_values: post_form_values,
+      post_form: to_form(post_form_values, as: :post),
+      shortlist_by_post: %{}
+    )
+  end
+
   defp load_initial_feed(socket) do
     socket
     |> reload_follow_state()
     |> reload_posts()
-    |> reload_shortlist()
+  end
+
+  defp open_composer_with_params(socket, params) do
+    values =
+      socket.assigns.post_form_values
+      |> Params.override_format(params["format"])
+      |> Params.override_intention(params["intention"])
+
+    socket
+    |> show_composer()
+    |> assign_post_form(values)
+  end
+
+  defp show_composer(socket), do: assign(socket, :composer_open, true)
+
+  defp close_composer(socket), do: assign(socket, :composer_open, false)
+
+  defp create_post(user_id, post_params) do
+    post_params
+    |> Params.build_post_attrs()
+    |> then(&Posts.create_post(user_id, &1))
+  end
+
+  defp reset_after_post_create(socket) do
+    socket
+    |> close_composer()
+    |> refresh_feed()
+    |> assign_post_form(Params.default_post_form_values())
+  end
+
+  defp refresh_feed(socket) do
+    socket
+    |> assign(:pending_new_posts_count, 0)
+    |> reload_posts()
   end
 
   defp reload_follow_state(socket) do
     user_id = socket.assigns.current_user_id
     followed_ids = Accounts.list_followed_ids(user_id)
-
-    suggestions =
-      Accounts.list_directory(%{}, exclude_user_id: user_id, limit: 120)
-      |> Enum.reject(&(&1.id in followed_ids))
-      |> Enum.take(8)
+    suggestions = Accounts.list_suggested_users(user_id, limit: 8)
 
     socket
     |> assign(:followed_user_ids, followed_ids)
@@ -219,25 +261,24 @@ defmodule SocialAppWeb.FeedLive do
 
   defp reload_posts(socket) do
     user_id = socket.assigns.current_user_id
-    followed_ids = socket.assigns.followed_user_ids
     tab = Params.parse_feed_tab(socket.assigns.feed_tab)
     sort = Params.parse_feed_sort(socket.assigns.feed_sort)
 
     posts =
-      Feed.home_feed_for_user(user_id, limit: 80)
-      |> Stream.filter_feed_tab(tab, user_id, followed_ids)
-      |> Stream.sort_feed(sort)
-      |> Enum.take(20)
+      Feed.home_feed_for_user(user_id, tab: tab, sort: sort, limit: 20)
 
     socket
     |> assign(:feed_tab, tab)
     |> assign(:feed_sort, sort)
     |> assign(:posts, posts)
+    |> reload_visible_shortlist()
   end
 
-  defp reload_shortlist(socket) do
+  defp reload_visible_shortlist(socket) do
+    post_ids = Enum.map(socket.assigns.posts, & &1.id)
+
     shortlist =
-      Recruitment.list_entries(socket.assigns.current_user_id, limit: 200)
+      Recruitment.list_entries_for_posts(socket.assigns.current_user_id, post_ids)
       |> Map.new(fn entry -> {entry.post_id, entry} end)
 
     assign(socket, :shortlist_by_post, shortlist)
@@ -285,6 +326,8 @@ defmodule SocialAppWeb.FeedLive do
       id -> {:ok, id}
     end
   end
+
+  defp invalid_action(socket), do: put_flash(socket, :error, "Action invalide")
 
   defp maybe_preload_post_user(post) do
     if Ecto.assoc_loaded?(post.user) do

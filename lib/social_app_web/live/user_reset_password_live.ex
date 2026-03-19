@@ -5,36 +5,46 @@ defmodule SocialAppWeb.UserResetPasswordLive do
 
   def render(assigns) do
     ~H"""
-    <div class="panel auth-card">
-      <.header>Reset Password</.header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <section class="panel feed-panel matchday-hero">
+          <p class="kicker">Recovery</p>
+          <h1 class="section-title">Reset Password</h1>
+          <p class="section-subtitle">Mets a jour ton mot de passe puis reviens sur le terrain.</p>
+        </section>
 
-      <.simple_form
-        for={@form}
-        id="reset_password_form"
-        phx-submit="reset_password"
-        phx-change="validate"
-      >
-        <.error :if={@form.errors != []}>
-          Oops, something went wrong! Please check the errors below.
-        </.error>
+        <div class="panel feed-panel auth-card">
+          <.header>Reset Password</.header>
 
-        <.input field={@form[:password]} type="password" label="New password" required />
-        <.input
-          field={@form[:password_confirmation]}
-          type="password"
-          label="Confirm new password"
-          required
-        />
-        <:actions>
-          <.button phx-disable-with="Resetting...">Reset Password</.button>
-        </:actions>
-      </.simple_form>
+          <.simple_form
+            for={@form}
+            id="reset_password_form"
+            phx-submit="reset_password"
+            phx-change="validate"
+          >
+            <.error :if={@form.errors != []}>
+              Oops, something went wrong! Please check the errors below.
+            </.error>
 
-      <p class="info-link-row">
-        <.link href={~p"/users/register"} class="text-link">Register</.link>
-        | <.link href={~p"/users/log_in"} class="text-link">Log in</.link>
-      </p>
-    </div>
+            <.input field={@form[:password]} type="password" label="New password" required />
+            <.input
+              field={@form[:password_confirmation]}
+              type="password"
+              label="Confirm new password"
+              required
+            />
+            <:actions>
+              <.button phx-disable-with="Resetting...">Reset Password</.button>
+            </:actions>
+          </.simple_form>
+
+          <p class="info-link-row">
+            <.link href={~p"/users/register"} class="text-link">Register</.link>
+            | <.link href={~p"/users/log_in"} class="text-link">Log in</.link>
+          </p>
+        </div>
+      </section>
+    </.goalzone_shell>
     """
   end
 
@@ -50,7 +60,10 @@ defmodule SocialAppWeb.UserResetPasswordLive do
           %{}
       end
 
-    {:ok, assign_form(socket, form_source), temporary_assigns: [form: nil]}
+    {:ok,
+     socket
+     |> SocialAppWeb.PageShellComponents.assign_shell(:recovery, "Nouveau mot de passe")
+     |> assign_form(form_source), temporary_assigns: [form: nil]}
   end
 
   # Do not log in the user after reset password to avoid a

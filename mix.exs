@@ -8,6 +8,7 @@ defmodule SocialApp.MixProject do
       elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
       aliases: aliases(),
       deps: deps()
     ]
@@ -33,6 +34,7 @@ defmodule SocialApp.MixProject do
       {:phoenix_live_reload, "~> 1.5", only: :dev},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_live_dashboard, "~> 0.8"},
+      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
@@ -50,10 +52,14 @@ defmodule SocialApp.MixProject do
 
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "assets.sync"],
+      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["assets.verify", "ecto.create --quiet", "ecto.migrate --quiet", "test"]
+      "assets.setup": ["esbuild.install --if-missing"],
+      "assets.sync": ["assets.build"],
+      "assets.build": ["compile", "esbuild js", "esbuild css"],
+      "assets.deploy": ["esbuild js --minify", "esbuild css --minify", "phx.digest"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
     ]
   end
 end

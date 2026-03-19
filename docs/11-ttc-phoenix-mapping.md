@@ -30,7 +30,7 @@ Reproduire l'experience principale de `/Users/Amir/Desktop/TTC` (reseau social f
   - dashboard signaux (connexions, conversations, alertes, pipeline)
   - composer enrichi avec metadonnees de preuve
   - actions pipeline par post (add/remove shortlist + stage)
-- `TalentsLive` (`/talents`):
+- `MercatoLive` (`/mercato`):
   - recherche + filtres role/region/niveau/disponibilite
 - `NetworkLive` (`/reseau`):
   - connexions actives + suggestions + follow/unfollow
@@ -46,7 +46,7 @@ Reproduire l'experience principale de `/Users/Amir/Desktop/TTC` (reseau social f
 
 ### 3) Navigation / UX
 - Navbar principale alignee TTC:
-  - Terrain, Talents, Reseau, Messages, Alertes, Profil
+  - Terrain, Mercato, Reseau, Messages, Alertes, Profil
 - Theme football conserve et etendu avec classes pour:
   - dashboard metrics
   - cards directory/network
@@ -73,7 +73,7 @@ Reproduire l'experience principale de `/Users/Amir/Desktop/TTC` (reseau social f
   - `lib/social_app/accounts/report.ex`
 - LiveViews:
   - `lib/social_app_web/live/feed_live.ex`
-  - `lib/social_app_web/live/talents_live.ex`
+  - `lib/social_app_web/live/mercato_live.ex`
   - `lib/social_app_web/live/network_live.ex`
   - `lib/social_app_web/live/messages_live.ex`
   - `lib/social_app_web/live/profile_live/show.ex`

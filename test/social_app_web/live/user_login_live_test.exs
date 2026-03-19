@@ -11,6 +11,7 @@ defmodule SocialAppWeb.UserLoginLiveTest do
       assert html =~ "Log in"
       assert html =~ "Register"
       assert html =~ "Forgot your password?"
+      assert html =~ "feed-layout"
     end
 
     test "redirects if already logged in", %{conn: conn} do
@@ -63,7 +64,7 @@ defmodule SocialAppWeb.UserLoginLiveTest do
 
       {:ok, _login_live, login_html} =
         lv
-        |> element(~s|a[href="/users/register"]|)
+        |> element(~s|.auth-card a.text-link[href="/users/register"]|)
         |> render_click()
         |> follow_redirect(conn, ~p"/users/register")
 
@@ -77,7 +78,7 @@ defmodule SocialAppWeb.UserLoginLiveTest do
 
       {:ok, conn} =
         lv
-        |> element(~s|a[href="/users/reset_password"]|)
+        |> element(~s|.auth-card a.text-link[href="/users/reset_password"]|)
         |> render_click()
         |> follow_redirect(conn, ~p"/users/reset_password")
 

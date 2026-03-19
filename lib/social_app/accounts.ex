@@ -18,13 +18,56 @@ defmodule SocialApp.Accounts do
   def list_directory(filters \\ %{}, opts \\ []) do
     exclude_user_id = Keyword.get(opts, :exclude_user_id)
     limit = Keyword.get(opts, :limit, 120)
+    order_by = Keyword.get(opts, :order_by, :username)
+    viewer_region = Keyword.get(opts, :viewer_region)
 
     User
     |> maybe_exclude_user(exclude_user_id)
     |> apply_directory_filters(filters)
-    |> order_by([u], asc: u.username)
+    |> apply_directory_order(order_by, viewer_region)
     |> limit(^limit)
     |> Repo.all()
+  end
+
+  def count_directory(filters \\ %{}, opts \\ []) do
+    exclude_user_id = Keyword.get(opts, :exclude_user_id)
+
+    User
+    |> maybe_exclude_user(exclude_user_id)
+    |> apply_directory_filters(filters)
+    |> select([u], count(u.id))
+    |> Repo.one()
+  end
+
+  def list_suggested_users(user_id, opts \\ [])
+
+  def list_suggested_users(nil, opts) do
+    limit = Keyword.get(opts, :limit, 8)
+    list_directory(%{}, limit: limit)
+  end
+
+  def list_suggested_users(user_id, opts) do
+    limit = Keyword.get(opts, :limit, 8)
+
+    from(u in User,
+      left_join: f in Follow,
+      on: f.followed_id == u.id and f.follower_id == ^user_id,
+      where: u.id != ^user_id and is_nil(f.followed_id),
+      order_by: [asc: u.username],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  def directory_facets(opts \\ []) do
+    exclude_user_id = Keyword.get(opts, :exclude_user_id)
+    base_query = User |> maybe_exclude_user(exclude_user_id)
+
+    %{
+      regions: list_distinct_field_values(base_query, :region),
+      levels: list_distinct_field_values(base_query, :level),
+      availabilities: list_distinct_field_values(base_query, :availability)
+    }
   end
 
   def get_user_by_username(username) when is_binary(username) do
@@ -321,6 +364,12 @@ defmodule SocialApp.Accounts do
       {:availability, availability}, acc when availability in [:open, :monitoring, :closed] ->
         from(u in acc, where: u.availability == ^availability)
 
+      {:min_confidence_score, score}, acc when is_integer(score) ->
+        from(u in acc, where: coalesce(u.confidence_score, 0) >= ^score)
+
+      {:headline_required, true}, acc ->
+        from(u in acc, where: fragment("COALESCE(?, '') <> ''", u.headline))
+
       {:q, q}, acc when is_binary(q) and q != "" ->
         pattern = "%#{q}%"
 
@@ -334,5 +383,43 @@ defmodule SocialApp.Accounts do
       _, acc ->
         acc
     end)
+  end
+
+  defp apply_directory_order(query, :mission_priority, viewer_region) do
+    from(u in query,
+      order_by: [
+        desc: fragment("CASE WHEN ? = 'open' THEN 1 ELSE 0 END", u.availability),
+        desc:
+          fragment(
+            "CASE WHEN ? = 'elite' THEN 2 WHEN ? = 'confirme' THEN 1 ELSE 0 END",
+            u.level,
+            u.level
+          ),
+        desc: fragment("CASE WHEN COALESCE(?, '') <> '' THEN 1 ELSE 0 END", u.headline),
+        desc: fragment("COALESCE(?, 0)", u.confidence_score),
+        desc:
+          fragment(
+            "CASE WHEN COALESCE(?, '') <> '' AND ? = ? THEN 1 ELSE 0 END",
+            u.region,
+            u.region,
+            ^viewer_region
+          ),
+        asc: u.username
+      ]
+    )
+  end
+
+  defp apply_directory_order(query, _order_by, _viewer_region) do
+    from(u in query, order_by: [asc: u.username])
+  end
+
+  defp list_distinct_field_values(query, field_name) do
+    from(u in query,
+      select: field(u, ^field_name),
+      distinct: true,
+      order_by: field(u, ^field_name)
+    )
+    |> Repo.all()
+    |> Enum.reject(&(&1 in [nil, ""]))
   end
 end

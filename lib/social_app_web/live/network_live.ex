@@ -2,12 +2,13 @@ defmodule SocialAppWeb.NetworkLive do
   use SocialAppWeb, :live_view
 
   alias SocialApp.{Accounts, Labels}
+  alias SocialAppWeb.NetworkLive.Components
 
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_context, "Reseau")
+     |> SocialAppWeb.PageShellComponents.assign_shell(:reseau, "Reseau")
      |> assign(:mini_coach, %{
        page: "reseau",
        where: "Reseau (connexions)",
@@ -17,6 +18,7 @@ defmodule SocialAppWeb.NetworkLive do
        cta_label: "Ouvrir messages"
      })
      |> assign(:current_user_id, socket.assigns.current_user.id)
+     |> assign(:show_all_suggestions, false)
      |> load_network()}
   end
 
@@ -39,82 +41,134 @@ defmodule SocialAppWeb.NetworkLive do
   end
 
   @impl true
+  def handle_event("show_all_suggestions", _params, socket) do
+    {:noreply, assign(socket, :show_all_suggestions, true)}
+  end
+
+  @impl true
+  def handle_event("show_less_suggestions", _params, socket) do
+    {:noreply, assign(socket, :show_all_suggestions, false)}
+  end
+
+  @impl true
   def render(assigns) do
-    ~H"""
-    <section class="stack-lg">
-      <header class="panel matchday-hero">
-        <p class="kicker">Network</p>
-        <h1 class="section-title">Reseau professionnel</h1>
-        <p class="section-subtitle">
-          Connecte-toi avec scouts, clubs, agents et joueurs cibles.
-        </p>
-      </header>
-
-      <section class="panel stack-md">
-        <div class="post-actions">
-          <h2 class="section-title">Connexions actives</h2>
-          <span class="meta-line">{length(@following)} connexions</span>
-        </div>
-
-        <article :for={user <- @following} class="directory-card">
-          <div>
-            <a href={~p"/profile/#{user.username}"} class="text-link">@{user.username}</a>
-            <p class="meta-line">
-              {Labels.role_label(user.role)} · {Labels.level_label(user.level)} · {user.region}
-            </p>
-            <p class="post-content">{fallback_headline(user.headline)}</p>
-          </div>
-          <button class="ghost-link" phx-click="toggle_follow" phx-value-user_id={user.id}>
-            Retirer
-          </button>
-        </article>
-
-        <p :if={@following == []} class="meta-line">Aucune connexion pour le moment.</p>
-      </section>
-
-      <section class="panel stack-md">
-        <div class="post-actions">
-          <h2 class="section-title">Suggestions</h2>
-          <span class="meta-line">{length(@suggestions)} profils</span>
-        </div>
-
-        <article :for={user <- @suggestions} class="directory-card">
-          <div>
-            <a href={~p"/profile/#{user.username}"} class="text-link">@{user.username}</a>
-            <p class="meta-line">
-              {Labels.role_label(user.role)} · {Labels.level_label(user.level)} · {user.region}
-            </p>
-            <p class="post-content">{fallback_headline(user.headline)}</p>
-          </div>
-          <button class="ghost-link" phx-click="toggle_follow" phx-value-user_id={user.id}>
-            Connecter
-          </button>
-        </article>
-      </section>
-    </section>
-    """
+    Components.render(assigns)
   end
 
   defp load_network(socket) do
     current_user_id = socket.assigns.current_user_id
     following = Accounts.list_following(current_user_id)
     followed_ids = Enum.map(following, & &1.id)
-
-    suggestions =
-      Accounts.list_directory(%{}, exclude_user_id: current_user_id, limit: 200)
-      |> Enum.reject(&(&1.id in followed_ids))
-      |> Enum.take(8)
+    suggestions = Accounts.list_suggested_users(current_user_id, limit: 8)
+    current_user = socket.assigns.current_user
 
     assign(socket,
       following: following,
       followed_ids: followed_ids,
-      suggestions: suggestions
+      suggestions: suggestions,
+      visible_suggestion_cards: visible_suggestion_cards(suggestions, current_user, socket.assigns.show_all_suggestions),
+      connection_cards: Enum.map(following, &build_connection_card(&1, current_user)),
+      suggestion_cards: Enum.map(suggestions, &build_suggestion_card(&1, current_user))
     )
+  end
+
+  defp visible_suggestion_cards(suggestions, current_user, true) do
+    Enum.map(suggestions, &build_suggestion_card(&1, current_user))
+  end
+
+  defp visible_suggestion_cards(suggestions, current_user, false) do
+    suggestions
+    |> Enum.take(3)
+    |> Enum.map(&build_suggestion_card(&1, current_user))
+  end
+
+  defp build_suggestion_card(user, current_user) do
+    %{
+      id: user.id,
+      username: user.username,
+      profile_href: ~p"/profile/#{user.username}",
+      role: Labels.role_label(user.role),
+      level: Labels.level_label(user.level),
+      region: present_region(user.region),
+      headline: compact_headline(user.headline),
+      meta: compact_meta(user, current_user)
+    }
+  end
+
+  defp build_connection_card(user, current_user) do
+    %{
+      id: user.id,
+      username: user.username,
+      profile_href: ~p"/profile/#{user.username}",
+      role: Labels.role_label(user.role),
+      level: Labels.level_label(user.level),
+      region: present_region(user.region),
+      headline: fallback_headline(user.headline),
+      badge: "Connexion active",
+      meta: connection_meta(user, current_user),
+      signals: connection_signals(user, current_user)
+    }
+  end
+
+  defp connection_signals(user, current_user) do
+    [
+      same_region_signal(user, current_user),
+      level_signal(user),
+      "Pret pour un message"
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.take(3)
+  end
+
+  defp same_region_signal(user, current_user) do
+    current_region = blank_to_nil(current_user.region)
+    user_region = blank_to_nil(user.region)
+
+    if current_region && user_region && current_region == user_region do
+      "Meme zone: #{user_region}"
+    end
+  end
+
+  defp level_signal(user), do: "Niveau: #{Labels.level_label(user.level)}"
+
+  defp compact_meta(user, current_user) do
+    case same_region_signal(user, current_user) do
+      nil -> nil
+      signal -> signal
+    end
+  end
+
+  defp connection_meta(user, current_user) do
+    if blank_to_nil(user.region) == blank_to_nil(current_user.region) do
+      "Connexion locale a activer"
+    else
+      "Connexion a recontacter"
+    end
   end
 
   defp fallback_headline(nil), do: "Profil en cours de qualification"
   defp fallback_headline(""), do: "Profil en cours de qualification"
   defp fallback_headline(value), do: value
+
+  defp compact_headline(nil), do: nil
+  defp compact_headline(""), do: nil
+
+  defp compact_headline(value) do
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp present_region(nil), do: "Region a confirmer"
+  defp present_region(""), do: "Region a confirmer"
+  defp present_region(value), do: value
+
+  defp blank_to_nil(nil), do: nil
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
 
   defp parse_user_id(nil), do: {:error, :invalid_id}
   defp parse_user_id(""), do: {:error, :invalid_id}

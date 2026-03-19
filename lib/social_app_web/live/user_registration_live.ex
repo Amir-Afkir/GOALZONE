@@ -6,40 +6,50 @@ defmodule SocialAppWeb.UserRegistrationLive do
 
   def render(assigns) do
     ~H"""
-    <div class="panel auth-card">
-      <.header>
-        Register for an account
-        <:subtitle>
-          Already registered?
-          <.link navigate={~p"/users/log_in"} class="text-link">
-            Log in
-          </.link>
-          to your account now.
-        </:subtitle>
-      </.header>
+    <.goalzone_shell current_user={@current_user} active_nav={@active_nav}>
+      <section class="stack-lg">
+        <section class="panel feed-panel matchday-hero">
+          <p class="kicker">Starter</p>
+          <h1 class="section-title">Register</h1>
+          <p class="section-subtitle">Cree ton acces puis reviens sur le terrain de reference.</p>
+        </section>
 
-      <.simple_form
-        for={@form}
-        id="registration_form"
-        phx-submit="save"
-        phx-change="validate"
-        phx-trigger-action={@trigger_submit}
-        action={~p"/users/log_in?_action=registered"}
-        method="post"
-      >
-        <.error :if={@check_errors}>
-          Oops, something went wrong! Please check the errors below.
-        </.error>
+        <div class="panel feed-panel auth-card">
+          <.header>
+            Register for an account
+            <:subtitle>
+              Already registered?
+              <.link navigate={~p"/users/log_in"} class="text-link">
+                Log in
+              </.link>
+              to your account now.
+            </:subtitle>
+          </.header>
 
-        <.input field={@form[:username]} type="text" label="Username" required />
-        <.input field={@form[:email]} type="email" label="Email" required />
-        <.input field={@form[:password]} type="password" label="Password" required />
+          <.simple_form
+            for={@form}
+            id="registration_form"
+            phx-submit="save"
+            phx-change="validate"
+            phx-trigger-action={@trigger_submit}
+            action={~p"/users/log_in?_action=registered"}
+            method="post"
+          >
+            <.error :if={@check_errors}>
+              Oops, something went wrong! Please check the errors below.
+            </.error>
 
-        <:actions>
-          <.button phx-disable-with="Creating account...">Create an account</.button>
-        </:actions>
-      </.simple_form>
-    </div>
+            <.input field={@form[:username]} type="text" label="Username" required />
+            <.input field={@form[:email]} type="email" label="Email" required />
+            <.input field={@form[:password]} type="password" label="Password" required />
+
+            <:actions>
+              <.button phx-disable-with="Creating account...">Create an account</.button>
+            </:actions>
+          </.simple_form>
+        </div>
+      </section>
+    </.goalzone_shell>
     """
   end
 
@@ -48,6 +58,7 @@ defmodule SocialAppWeb.UserRegistrationLive do
 
     socket =
       socket
+      |> SocialAppWeb.PageShellComponents.assign_shell(:register, "Inscription")
       |> assign(trigger_submit: false, check_errors: false)
       |> assign_form(changeset)
 
